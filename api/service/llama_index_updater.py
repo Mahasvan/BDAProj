@@ -7,9 +7,11 @@ indexer's response later.
 from pathlib import Path
 from typing import List
 
-from llama_index.core import SimpleDirectoryReader, GPTVectorStoreIndex, ServiceContext
+from llama_index.core import SimpleDirectoryReader, GPTVectorStoreIndex
 from llama_index.core.node_parser.text.token import TokenTextSplitter
 from api.service.ollama_embeddings import OllamaEmbeddings
+from llama_index.readers import WikipediaReader
+from llama_index.core import download_loader
 
 from api.service.config import get_index_path
 
@@ -55,18 +57,64 @@ def build_index_from_titles(titles: List[str], index_path: str = None):
     # Basic text splitter
     splitter = TokenTextSplitter(chunk_size=1024, chunk_overlap=128)
     chunked_docs = []
+
+    def _get_doc_text(doc):
+        # support multiple document APIs across llama-index versions
+        if hasattr(doc, "get_text"):
+            return doc.get_text()
+        if hasattr(doc, "get_content"):
+            return doc.get_content()
+        if hasattr(doc, "text"):
+            return getattr(doc, "text")
+        if hasattr(doc, "content"):
+            return getattr(doc, "content")
+        return None
+
+    def _set_doc_text(doc, text):
+        if hasattr(doc, "set_text"):
+            return doc.set_text(text)
+        if hasattr(doc, "set_content"):
+            return doc.set_content(text)
+        if hasattr(doc, "text"):
+            setattr(doc, "text", text)
+            return
+        if hasattr(doc, "content"):
+            setattr(doc, "content", text)
+            return
+
     for d in documents:
-        # print(d.text)
-        for chunk in splitter.split_text(d.text):
-            new_doc = d.copy()
-            new_doc.set_content(chunk)
-            # print(new_doc.text == chunk)
+        src_text = _get_doc_text(d)
+        if not src_text:
+            # skip documents we can't extract text from
+            continue
+        for chunk in splitter.split_text(src_text):
+            try:
+                new_doc = d.copy()
+            except Exception:
+                # copy may not exist on all doc types; mutate a shallow copy instead
+                new_doc = d
+            _set_doc_text(new_doc, chunk)
             chunked_docs.append(new_doc)
 
-    # Build a simple index; use Ollama embeddings (all-minilm) via ServiceContext
+    # Build a simple index; provide the embed model locally (per migration guide)
     embeddings = OllamaEmbeddings(model="all-minilm")
-    service_context = ServiceContext.from_defaults(embed_model=embeddings)
-    index = GPTVectorStoreIndex.from_documents(chunked_docs, service_context=service_context)
+    # Try local embed_model kwarg first (newer API). If that fails, fall back
+    # to older ServiceContext usage, then finally to global Settings.
+    try:
+        index = GPTVectorStoreIndex.from_documents(chunked_docs, embed_model=embeddings)
+    except TypeError:
+        # maybe older llama-index expects a service_context
+        try:
+            from llama_index.core import ServiceContext
+
+            service_context = ServiceContext.from_defaults(embed_model=embeddings)
+            index = GPTVectorStoreIndex.from_documents(chunked_docs, service_context=service_context)
+        except Exception:
+            # last resort: set global Settings
+            from llama_index.core import Settings
+
+            Settings.embed_model = embeddings
+            index = GPTVectorStoreIndex.from_documents(chunked_docs)
 
     target_path = index_path or str(INDEX_DIR)
     index.storage_context.persist(path=target_path)

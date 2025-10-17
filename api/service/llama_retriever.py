@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List, Dict
 
-from llama_index import StorageContext, load_index_from_storage
+from llama_index.core import StorageContext, load_index_from_storage
 
 from api.service.config import get_index_path
 

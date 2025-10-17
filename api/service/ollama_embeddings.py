@@ -13,17 +13,34 @@ from typing import List
 
 import requests
 
+# Import BaseEmbedding from llama-index (path compatible with 0.14.x)
+try:
+    from llama_index.embeddings import BaseEmbedding
+except Exception:
+    # fallback import path for older versions
+    from llama_index.core.embeddings import BaseEmbedding
 
-class OllamaEmbeddings:
+
+class OllamaEmbeddings(BaseEmbedding):
+    """Ollama embeddings adapter implementing llama-index BaseEmbedding API.
+
+    This adapter calls an Ollama embeddings HTTP endpoint and returns vectors
+    in the shape expected by llama-index.
+    """
+
+    # declare as fields so pydantic/BaseModel based BaseEmbedding accepts them
+    base_url: str | None = None
+    model: str = "all-minilm"
+
     def __init__(self, base_url: str | None = None, model: str = "all-minilm"):
-        self.base_url = (base_url or os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434")).rstrip("/")
-        self.model = model
+        # use object.__setattr__ to bypass pydantic's __setattr__ restrictions
+        url = (base_url or os.environ.get("OLLAMA_BASE_URL", "http://localhost:11434"))
+        object.__setattr__(self, "base_url", url.rstrip("/"))
+        object.__setattr__(self, "model", model)
 
     def _call_embeddings(self, inputs: List[str]):
         url = f"{self.base_url}/api/embeddings"
-        # Ollama expects a 'prompt' field for embedding requests (example: all-minilm)
-        # Try a bulk request first (prompt as list). If the server doesn't accept
-        # bulk prompts, fall back to one request per input.
+
         def _parse_response(data):
             # Common OpenAI-like shape
             if isinstance(data, dict) and "data" in data and isinstance(data["data"], list):
@@ -56,9 +73,7 @@ class OllamaEmbeddings:
                 parsed = _parse_response(data)
                 if parsed is not None:
                     return parsed
-            # if we reach here, fall back to per-item
         except Exception:
-            # proceed to per-item fallback
             pass
 
         # Per-item fallback: call embeddings endpoint once per string
@@ -72,7 +87,6 @@ class OllamaEmbeddings:
             parsed = _parse_response(data)
             if parsed is None:
                 raise ValueError(f"Unexpected embeddings response: {data}")
-            # parsed will be a single-item list for single-prompt responses
             embeddings.append(parsed[0])
 
         return embeddings
@@ -85,3 +99,19 @@ class OllamaEmbeddings:
         """Embed a single query string and return a single vector."""
         res = self._call_embeddings([text])
         return res[0]
+
+    # --- Methods required by llama-index BaseEmbedding ---
+    def _get_query_embedding(self, query: str):
+        """Synchronous single-query embedding used by llama-index."""
+        return self.embed_query(query)
+
+    async def _aget_query_embedding(self, query: str):
+        """Asynchronous single-query embedding. Runs sync call in a thread."""
+        import asyncio
+
+        res = await asyncio.to_thread(self.embed_query, query)
+        return res
+
+    def _get_text_embedding(self, text: str):
+        """Synchronous document text embedding used by llama-index."""
+        return self.embed_query(text)
