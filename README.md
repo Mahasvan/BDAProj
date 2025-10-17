@@ -1,28 +1,32 @@
 # MunHelper
 
-Context-based Wikipedia lookup. <br>
-Searches selected Wikipedia pages and answers queries using a Llama-Index vector store and Ollama for generation.
+Context-based Wikipedia lookup. Searches selected Wikipedia pages and answers queries using a Llama-Index vector store and Ollama for generation.
 
 ## Features
 
 - OpenAPI-compatible API using FastAPI
-- Website using Streamlit
 - Semantic search over selected Wikipedia pages
 - Ingestion script to build a Llama-Index vector store
 - Integration with Ollama for generation
-- Docker Containerization
-- Auto Update (coming soon)
 
-## Quickstart (bare metal)
+## Quickstart (local)
 
-- Ensure Python 3.10+ is installed and you have Ollama running locally (see Ollama docs).
+Follow these steps to get the project running locally.
+
+- Create and activate a Python virtual environment (macOS / zsh example):
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+```
+
 - Install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-- Configure `.env` as needed (a sample is provided).
+- (Optional) Edit `.env` to configure `OLLAMA_BASE_URL`, `CHAT_MODEL`, and `INDEX_PATH`.
 
 - Ingest the Wikipedia pages and build the index:
 
@@ -36,72 +40,47 @@ python scripts/ingest_wikipedia.py
 python app.py
 ```
 
-API is served at `http://localhost:5000/docs`.
+Open the API docs at: `http://localhost:5000/docs`
 
 ## Usage
 
-1. Populate the index by running the ingestion script (see above). This will create files under `data/wikipedia_pages/` and persist a Llama-Index under `data/index/`.
-2. Use the API endpoints:
-   - `GET /search/wiki?query=...` — run a semantic search and return raw retriever output.
-   - `GET /chat/wiki?query=...` — run retrieval and stream Ollama-generated answer using the retrieved context.
-   - `GET /manage/reindex-wikipedia` — re-run ingestion and rebuild the index (proof-of-concept; blocking).
+1. Populate the index by running the ingestion script (step 4 above). This creates `data/wikipedia_pages/` and persists a Llama-Index under `data/index/` (or the path set in `INDEX_PATH`).
 
-3. If you want different Wikipedia pages, edit `data/wikipedia_pages.txt` and call `/manage/reindex-wikipedia`.
+2. Available API endpoints:
 
-## Other Installation Methods
+- `GET /search/wiki?query=...` — run a semantic search and return retriever results.
+- `GET /chat/wiki?query=...` — run retrieval and stream an Ollama-generated answer.
+- `GET /manage/reindex-wikipedia` — rebuild the index from `data/wikipedia_pages.txt` (blocking proof-of-concept).
 
-> [!NOTE]
-> These methods may leave residue if you decide to uninstall.
-> I recommend using the Docker method for a cleaner installation.
+To change which pages are ingested, edit `data/wikipedia_pages.txt` then call `/manage/reindex-wikipedia`.
 
-<details>
+## Installation options
 
-<summary>
-Bare Metal installation instructions
-</summary>
+### Bare metal
 
-## Installation - Bare Metal
+- Clone the repository:
 
-- Clone the repository
-  - ```shell
-    git clone https://github.com/Mahasvan/Munhelper
-    ```
-- Install the dependencies
-  - ```shell
-    pip install -r requirements.txt
-    ```
-- Ingest Wikipedia pages and build the Llama-Index
-  - ```shell
-  python scripts/ingest_wikipedia.py
-  ```
+```bash
+git clone https://github.com/Mahasvan/Munhelper
+cd Munhelper
+```
 
-- Install Ollama and pull preferred model (if using Ollama images locally)
-  - ```shell
-  ollama pull llama3.2:1b
-  ```
-- Set up environment variables accordingly (refer `app.py`)
-- Start the API
-  - ```shell
-    python app.py
-    ```
-- Access the API at `http://localhost:5000/docs` (or whatever port you configured)
-- Setting up the frontend
-  - Open another terminal window, and `cd` into the `frontend` folder
-  - Follow the instructions given [here](https://github.com/Mahasvan/MunHelper-frontend/).
-- Make sure to read the [Usage](#usage) section.
+- Follow the Quickstart steps above (venv, install, ingest, run).
 
-</details>
+If you use Ollama locally, you can pull a model with:
 
-<details>
-<summary>Docker build images from scratch</summary>
+```bash
+ollama pull llama3.2:1b
+```
 
-## Run with Docker (build images from scratch)
+### Docker
 
-- Follow all steps in the [Docker Instructions](#installation-with-docker) until the last step.
-- Start the containers using `docker-compose-build` instead of `docker-compose`
-  - ```shell
-     docker-compose -f docker-compose-build.yml build --no-cache
-     docker-compose -f docker-compose-build.yml up -d
-    ```
-- Make sure to read the [Usage](#usage) section.
-</details>
+If you prefer Docker, use the repository's Docker setup (if present) or build images using docker-compose. Docker configuration is not modified by this migration; consult existing Docker files in the repo for details.
+
+## Notes and caveats
+
+- Ingestion uses the `wikipedia` Python package; some titles may fail and will be skipped.
+- The Ollama streaming parser in `api/service/ollama.py` tries to handle common newline-delimited JSON formats. If your Ollama version streams a different schema, update the parser accordingly.
+- The `/manage/reindex-wikipedia` endpoint is a blocking proof-of-concept; for production use you should run ingestion asynchronously or via a job queue.
+
+If you want me to: (a) clean up more docs, (b) add tests for ingestion and retrieval, or (c) wire embeddings to Ollama (if your Ollama exposes embeddings), tell me which and I'll implement next.
