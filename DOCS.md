@@ -2,6 +2,7 @@ Project changes and how to run
 =================================
 
 What I changed
+
 - Replaced the ECOSOC / ChromaDB pipeline with a Wikipedia-backed RAG prototype using Llama-Index for the vector store and Ollama for generation.
 - Added an ingestion script to download a list of Wikipedia pages (from `data/wikipedia_pages.txt`) and build a persisted Llama-Index at `data/index`.
 - Created a retriever wrapper (`api/service/llama_retriever.py`) that loads the persisted index and exposes a simple `query()` method.
@@ -10,8 +11,9 @@ What I changed
   - `GET /chat/wiki?query=...` — runs retrieval and streams an Ollama-generated answer
 - Added a management route: `GET /manage/reindex-wikipedia` to rebuild the index from `data/wikipedia_pages.txt` (blocking proof-of-concept).
 
+
 Quickstart (local)
-------------------
+
 1. Create a Python 3.10+ virtual environment and activate it.
 
 ```bash
@@ -40,6 +42,7 @@ python app.py
 ```
 
 6. Open `http://localhost:5000/docs` to explore the API. Useful endpoints:
+
 - `GET /manage/reindex-wikipedia` — rebuild index from `data/wikipedia_pages.txt`.
 - `GET /search/wiki?query=...` — run semantic retrieval against the index.
 - `GET /chat/wiki?query=...` — run retrieval + stream Ollama answer.
@@ -50,3 +53,7 @@ Notes and caveats
 - I removed the Chroma/ECOSOC-specific files to simplify the codebase — if you need them back, revert the git history.
 
 If you want, I can now run a small static check (import-only) or add unit tests for the ingestion and retrieval pipeline.
+
+Note about embeddings
+
+- This branch includes an `OllamaEmbeddings` adapter (`api/service/ollama_embeddings.py`) that calls an `/api/embeddings` endpoint on your Ollama server and requests the `all-minilm` model by default. If your Ollama deployment does not expose an embeddings endpoint, you will need to use another embeddings provider or adjust the adapter.

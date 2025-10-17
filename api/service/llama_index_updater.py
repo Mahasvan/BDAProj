@@ -9,6 +9,7 @@ from typing import List
 
 from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex, ServiceContext
 from llama_index.langchain_helpers.text_splitter import TokenTextSplitter
+from api.service.ollama_embeddings import OllamaEmbeddings
 
 from api.service.config import get_index_path
 
@@ -59,8 +60,9 @@ def build_index_from_titles(titles: List[str], index_path: str = None):
             new_doc.set_text(chunk)
             chunked_docs.append(new_doc)
 
-    # Build a simple index; embedding/LLM config will be provided via ServiceContext
-    service_context = ServiceContext.from_defaults()
+    # Build a simple index; use Ollama embeddings (all-minilm) via ServiceContext
+    embeddings = OllamaEmbeddings(model="all-minilm")
+    service_context = ServiceContext.from_defaults(embed_model=embeddings)
     index = GPTVectorStoreIndex.from_documents(chunked_docs, service_context=service_context)
 
     target_path = index_path or str(INDEX_DIR)
