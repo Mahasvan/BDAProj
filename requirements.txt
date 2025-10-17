@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+python-dotenv
+wikipedia
+llama-index
+requests
+langchain
+langchain-community
+beautifulsoup4
