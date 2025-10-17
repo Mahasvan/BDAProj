@@ -7,8 +7,8 @@ indexer's response later.
 from pathlib import Path
 from typing import List
 
-from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex, ServiceContext
-from llama_index.langchain_helpers.text_splitter import TokenTextSplitter
+from llama_index.core import SimpleDirectoryReader, GPTVectorStoreIndex, ServiceContext
+from llama_index.core.node_parser.text.token import TokenTextSplitter
 from api.service.ollama_embeddings import OllamaEmbeddings
 
 from api.service.config import get_index_path
@@ -19,7 +19,7 @@ INDEX_DIR = Path(get_index_path())
 
 
 def load_wikipedia_page_titles(file_path: str) -> List[str]:
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         titles = [line.strip() for line in f if line.strip()]
     return titles
 
@@ -42,7 +42,8 @@ def build_index_from_titles(titles: List[str], index_path: str = None):
             except Exception as e:
                 print(f"Failed to download {title}: {e}")
                 continue
-            with open(filename, "w") as f:
+            # persist using UTF-8 to avoid encoding errors on Windows
+            with open(filename, "w", encoding="utf-8") as f:
                 f.write(text)
 
     # create an index from the directory of text files
@@ -55,9 +56,11 @@ def build_index_from_titles(titles: List[str], index_path: str = None):
     splitter = TokenTextSplitter(chunk_size=1024, chunk_overlap=128)
     chunked_docs = []
     for d in documents:
-        for chunk in splitter.split_text(d.get_text()):
+        # print(d.text)
+        for chunk in splitter.split_text(d.text):
             new_doc = d.copy()
-            new_doc.set_text(chunk)
+            new_doc.set_content(chunk)
+            # print(new_doc.text == chunk)
             chunked_docs.append(new_doc)
 
     # Build a simple index; use Ollama embeddings (all-minilm) via ServiceContext
