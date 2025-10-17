@@ -31,9 +31,15 @@ async def wiki_chat(query: str):
 
     # get context from retriever
     response = retriever.query(query, top_k=5)
-    context = str(response)
+    # build a compact context string from top results
+    parts = []
+    for r in response:
+        text = r.get("text")
+        extra = r.get("extra_info") if r.get("extra_info") else ""
+        parts.append(f"---\n{text}\n{extra}\n")
+    context = "\n".join(parts)
 
-    return StreamingResponse(generator.stream_response(context=context, question=query))
+    return StreamingResponse(generator.stream_response(context=context, question=query), media_type="text/plain")
 
 
 def setup(app):

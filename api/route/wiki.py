@@ -19,8 +19,12 @@ def setup(app):
     def search(query: str, k: int = 5):
         try:
             resp = retriever.query(query, top_k=k)
-            return {"answer": str(resp)}
+            return {"results": resp}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    @router.get("/health")
+    def health():
+        return {"status": "ok"}
 
     app.include_router(router, prefix=prefix)

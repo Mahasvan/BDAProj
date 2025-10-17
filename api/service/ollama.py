@@ -36,13 +36,48 @@ class OllamaGenerator:
                 yield json.dumps({"error": r.text}).encode()
                 return
 
-            for chunk in r.iter_lines(decode_unicode=False):
-                if not chunk:
+            for line in r.iter_lines(decode_unicode=True):
+                if not line:
                     continue
                 try:
-                    # Ollama streams newline-delimited JSON events; forward raw bytes
-                    yield chunk + b"\n"
+                    # each line is typically a JSON object
+                    obj = None
+                    try:
+                        obj = json.loads(line)
+                    except Exception:
+                        # not JSON, forward raw line
+                        yield line.encode() + b"\n"
+                        continue
+
+                    # try common fields
+                    text_piece = None
+                    if isinstance(obj, dict):
+                        # Ollama may use 'content' or nested 'choices' -> 'delta' or 'text'
+                        if "content" in obj:
+                            text_piece = obj.get("content")
+                        elif "text" in obj:
+                            text_piece = obj.get("text")
+                        elif "choices" in obj:
+                            # choices can be a list of {"delta": {"content": "..."}}
+                            try:
+                                choices = obj.get("choices")
+                                if isinstance(choices, list) and len(choices) > 0:
+                                    c = choices[0]
+                                    if isinstance(c, dict):
+                                        if "delta" in c and isinstance(c["delta"], dict):
+                                            text_piece = c["delta"].get("content")
+                                        else:
+                                            text_piece = c.get("text") or c.get("content")
+                            except Exception:
+                                text_piece = None
+
+                    if text_piece is not None:
+                        yield text_piece.encode() + b"\n"
+                    else:
+                        # fallback: return the JSON line verbatim
+                        yield json.dumps(obj).encode() + b"\n"
+
                 except Exception as e:
-                    shell.print_red_message(f"Error streaming chunk: {e}")
+                    shell.print_red_message(f"Error parsing Ollama stream line: {e}")
                     continue
 

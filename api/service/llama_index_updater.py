@@ -7,12 +7,14 @@ indexer's response later.
 from pathlib import Path
 from typing import List
 
-from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex, ServiceContext, LLMPredictor
+from llama_index import SimpleDirectoryReader, GPTVectorStoreIndex, ServiceContext
 from llama_index.langchain_helpers.text_splitter import TokenTextSplitter
+
+from api.service.config import get_index_path
 
 DATA_DIR = Path("data")
 WIKI_DIR = DATA_DIR / "wikipedia_pages"
-INDEX_DIR = DATA_DIR / "index"
+INDEX_DIR = Path(get_index_path())
 
 
 def load_wikipedia_page_titles(file_path: str) -> List[str]:
@@ -61,11 +63,9 @@ def build_index_from_titles(titles: List[str], index_path: str = None):
     service_context = ServiceContext.from_defaults()
     index = GPTVectorStoreIndex.from_documents(chunked_docs, service_context=service_context)
 
-    if index_path:
-        index.storage_context.persist(path=index_path)
-        print(f"Index saved to {index_path}")
-    else:
-        print("Index built in memory (not persisted)")
+    target_path = index_path or str(INDEX_DIR)
+    index.storage_context.persist(path=target_path)
+    print(f"Index saved to {target_path}")
 
     return index
 
