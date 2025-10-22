@@ -14,7 +14,7 @@ def get_ollama_base_url():
 
 
 def get_chat_model():
-    return get_env("CHAT_MODEL", "llama3")
+    return get_env("CHAT_MODEL", "gemma3:1b")
 
 def get_embedding_model():
     return get_env("EMBEDDING_MODEL", "all-minilm")

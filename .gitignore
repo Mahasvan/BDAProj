@@ -148,7 +148,6 @@ activemq-data/
 *.sage.py
 
 # Environments
-.env
 .envrc
 .venv
 env/
@@ -232,3 +231,4 @@ build/
 *.swp
 *.bak
 node_modules/
+data/*

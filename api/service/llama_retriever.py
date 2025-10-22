@@ -1,10 +1,29 @@
 from pathlib import Path
 from typing import List, Dict
 
-from llama_index.core import StorageContext, load_index_from_storage
+from llama_index.core import StorageContext, load_index_from_storage, Settings
+from llama_index.embeddings.ollama import OllamaEmbedding
 
-from api.service.config import get_index_path
+from api.service.config import get_index_path, get_embedding_model, get_ollama_base_url, get_chat_model
+from llama_index.llms.ollama import Ollama
 
+llm = Ollama(
+    model=get_chat_model(),
+    request_timeout=120.0,
+    # Manually set the context window to limit memory usage
+    context_window=2048,
+)
+
+
+ollama_embedding = OllamaEmbedding(
+    model_name=get_embedding_model(),
+    base_url=get_ollama_base_url(),
+    # Can optionally pass additional kwargs to ollama
+    # ollama_additional_kwargs={"mirostat": 0},
+)
+
+Settings.embed_model = ollama_embedding
+Settings.llm = llm
 
 class LlamaRetriever:
     _instance = None
@@ -23,7 +42,7 @@ class LlamaRetriever:
 
     def query(self, query_text: str, top_k: int = 5) -> List[Dict]:
         """Return a list of dicts: { 'text': ..., 'score': ..., 'source': {...} }"""
-        query_engine = self.index.as_query_engine(k=top_k, similarity_top_k=top_k)
+        query_engine = self.index.as_query_engine(k=top_k, similarity_top_k=top_k, llm=llm)
         response = query_engine.query(query_text)
 
         # Extract nodes/sources if available

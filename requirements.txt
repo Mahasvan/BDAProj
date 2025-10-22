@@ -7,3 +7,6 @@ requests
 langchain
 langchain-community
 beautifulsoup4
+llama-index-readers-wikipedia
+llama-index-embeddings-ollama
+llama-index-llms-ollama

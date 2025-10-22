@@ -8,10 +8,7 @@ from pathlib import Path
 from typing import List
 
 from llama_index.core import VectorStoreIndex
-# from llama_index.core.node_parser.text.token import TokenTextSplitter
 from llama_index.embeddings.ollama import OllamaEmbedding
-
-from llama_index.readers.wikipedia import WikipediaReader
 from llama_index.core import Settings
 from llama_index.core import download_loader
 
