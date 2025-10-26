@@ -28,7 +28,7 @@ async def wiki_chat(query: str):
     # load retriever and generator on-demand
     retriever = LlamaRetriever()
     generator = OllamaGenerator(base_url=ollama_base_url, model=chat_model)
-
+    # query = query + "\n\n Do not ask if I need anything else answered."
     # get context from retriever
     response = retriever.query(query, top_k=5)
     # build a compact context string from top results

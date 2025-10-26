@@ -7,7 +7,7 @@ from api.service.llama_index_updater import build_index_from_titles
 
 def main():
     # titles = load_wikipedia_page_titles("data/wikipedia_pages.txt")
-    build_index_from_titles(["Climate Change"], index_path="data/index")
+    build_index_from_titles(["Big data", "Apache Spark", "Apache Hadoop"], index_path="data/index")
 
 
 if __name__ == "__main__":
