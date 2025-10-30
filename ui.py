@@ -10,7 +10,7 @@ st.sidebar.header("Settings")
 host = st.sidebar.text_input("API Host", "http://localhost:8000")
 
 # Main UI
-st.subheader("Chat Interface")
+st.subheader("Ask questions about Big Data and related topics!")
 
 query = st.text_input("Enter your query:", placeholder="e.g., climate change")
 

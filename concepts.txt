@@ -1,0 +1,8 @@
+Big data
+Data lake
+Batch processing
+Stream processing
+Apache Hadoop
+Apache Spark
+Apache Kafka
+MapReduce
